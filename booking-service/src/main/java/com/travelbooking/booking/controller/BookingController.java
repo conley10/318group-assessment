@@ -1,7 +1,6 @@
 package com.travelbooking.booking.controller;
 
 import com.travelbooking.booking.model.Booking;
-import com.travelbooking.booking.model.BookingStatus;
 import com.travelbooking.booking.service.BookingService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -48,15 +47,6 @@ public class BookingController {
                 .body(created);
     }
 
-    @PutMapping("/{bookingId}/status")
-    public ResponseEntity<Booking> updateStatus(
-            @PathVariable UUID bookingId,
-            @RequestParam BookingStatus status
-    ) {
-        return service.updateStatus(bookingId, status)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
-    }
 
     @DeleteMapping("/{bookingId}")
     public ResponseEntity<Void> deleteBooking(
