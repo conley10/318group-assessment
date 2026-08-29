@@ -90,6 +90,7 @@ Each module follows the same internal layout:
     - **Domain Layer**: `@Entity` (Jakarta Persistence), Jakarta Validation (`@NotNull`, `@NotBlank`, `@Min`, `@Size`, `@DecimalMin`)
     - **Data Access Layer**: `@Repository` via Spring Data JPA `JpaRepository`
     - **Error Handling**: `@RestControllerAdvice`
+    - **API Documentation**: springdoc-openapi 3.x (`springdoc-openapi-starter-webmvc-ui`) — Swagger UI at `/swagger-ui.html`, generated OpenAPI 3.1 at `/v3/api-docs` on every service
 - **Messaging**: Spring Cloud Stream 2025.1.x with the Kafka binder (`spring-cloud-stream-binder-kafka`)
     - Consumers are functional `Consumer<T>` beans registered through `spring.cloud.function.definition`
     - Producers use `StreamBridge` with `<binding>-out-0` bindings

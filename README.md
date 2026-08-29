@@ -126,6 +126,17 @@ cd notification-service; .\mvnw.cmd clean test; .\mvnw.cmd spring-boot:run
 
 Each service exposes an H2 console at `/h2-console` (JDBC URL `jdbc:h2:mem:<service>db`, user `sa`, empty password).
 
+**Interactive API docs (Swagger UI).** Every service includes [springdoc-openapi](https://springdoc.org), so once a service is running you can browse and call its endpoints from the browser — no Postman needed:
+
+| Service | Swagger UI | Raw OpenAPI JSON |
+| :--- | :--- | :--- |
+| Catalogue | http://localhost:8081/swagger-ui.html | http://localhost:8081/v3/api-docs |
+| Booking | http://localhost:8082/swagger-ui.html | http://localhost:8082/v3/api-docs |
+| Payment | http://localhost:8083/swagger-ui.html | http://localhost:8083/v3/api-docs |
+| Notification | http://localhost:8084/swagger-ui.html | http://localhost:8084/v3/api-docs |
+
+In the UI, expand an endpoint → **Try it out** → edit the JSON body → **Execute**. The hand-written contract in `specs/openapi-contract.yaml` is the design-time spec; `/v3/api-docs` is what the code actually exposes.
+
 For a step-by-step manual integration walkthrough (create package → departure → booking → observe events), Kafka console-producer commands, and troubleshooting, see **[docs/setup-and-testing-guide.md](docs/setup-and-testing-guide.md)**.
 
 ## Implemented Functionality
