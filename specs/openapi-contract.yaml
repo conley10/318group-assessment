@@ -1,0 +1,1010 @@
+openapi: 3.0.3
+info:
+  title: AI-Assisted Travel Booking System API Specification
+  description: |
+    OpenAPI 3.0 specification for the Catalogue, Booking, Payment and Notification
+    microservices of the travel booking system.
+
+    Synchronous REST endpoints are described under `paths`. The services also
+    communicate asynchronously through Apache Kafka; those message contracts are
+    documented in the `x-kafka-events` extension at the end of this file and reuse
+    the event schemas defined under `components/schemas`.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8081/api
+    description: Catalogue Service Local Development Server
+  - url: http://localhost:8082/api
+    description: Booking Service Local Development Server
+  - url: http://localhost:8083/api
+    description: Payment Service Local Development Server
+  - url: http://localhost:8084/api
+    description: Notification Service Local Development Server
+
+tags:
+  - name: Catalogue Service - Packages
+    description: Travel package catalogue management
+  - name: Catalogue Service - Departures
+    description: Package departures and capacity
+  - name: Catalogue Service - Reservations
+    description: Inventory reservations on departures
+  - name: Booking Service
+    description: Booking creation and lifecycle
+  - name: Payment Service
+    description: Payment records (created via events)
+  - name: Notification Service
+    description: Customer notifications (created via events)
+
+paths:
+  # ==========================================
+  # CATALOGUE SERVICE - TRAVEL PACKAGES
+  # ==========================================
+  /packages:
+    get:
+      tags:
+        - Catalogue Service - Packages
+      summary: List all travel packages, optionally filtered by destination (Feature C2)
+      operationId: listPackages
+      parameters:
+        - name: destination
+          in: query
+          required: false
+          description: Case-insensitive substring match on the package destination
+          schema:
+            type: string
+          example: Tokyo
+      responses:
+        '200':
+          description: A list of travel packages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TravelPackage'
+    post:
+      tags:
+        - Catalogue Service - Packages
+      summary: Create a new travel package (Feature C1)
+      operationId: createPackage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TravelPackageRequest'
+      responses:
+        '201':
+          description: Package created successfully
+          headers:
+            Location:
+              description: URI of the created package
+              schema:
+                type: string
+                example: /api/packages/1
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TravelPackage'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /packages/{packageId}:
+    parameters:
+      - $ref: '#/components/parameters/PackageId'
+    get:
+      tags:
+        - Catalogue Service - Packages
+      summary: Get a travel package by ID (Feature C1)
+      operationId: getPackageById
+      responses:
+        '200':
+          description: Package details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TravelPackage'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - Catalogue Service - Packages
+      summary: Update a travel package (Feature C1)
+      operationId: updatePackage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TravelPackageRequest'
+      responses:
+        '200':
+          description: Package updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TravelPackage'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Catalogue Service - Packages
+      summary: Delete a travel package (Feature C1)
+      operationId: deletePackage
+      responses:
+        '204':
+          description: Package deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==========================================
+  # CATALOGUE SERVICE - DEPARTURES
+  # ==========================================
+  /packages/{packageId}/departures:
+    parameters:
+      - $ref: '#/components/parameters/PackageId'
+    get:
+      tags:
+        - Catalogue Service - Departures
+      summary: List departures for a package (Feature C3)
+      operationId: listDeparturesForPackage
+      responses:
+        '200':
+          description: Departures of the package (empty list if the package has none or does not exist)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PackageDeparture'
+    post:
+      tags:
+        - Catalogue Service - Departures
+      summary: Add a departure to a package (Feature C3)
+      operationId: createDeparture
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PackageDepartureRequest'
+      responses:
+        '201':
+          description: Departure created successfully
+          headers:
+            Location:
+              description: URI of the created departure
+              schema:
+                type: string
+                example: /api/departures/1
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PackageDeparture'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          description: Package not found
+
+  /departures/{departureId}:
+    parameters:
+      - $ref: '#/components/parameters/DepartureId'
+    get:
+      tags:
+        - Catalogue Service - Departures
+      summary: Get a departure by ID (Feature C3)
+      operationId: getDepartureById
+      responses:
+        '200':
+          description: Departure details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PackageDeparture'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Catalogue Service - Departures
+      summary: Delete a departure (Feature C3)
+      operationId: deleteDeparture
+      responses:
+        '204':
+          description: Departure deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /departures/{departureId}/availability:
+    parameters:
+      - $ref: '#/components/parameters/DepartureId'
+    get:
+      tags:
+        - Catalogue Service - Departures
+      summary: Check available capacity of a departure (Feature C4)
+      description: |
+        `availableCapacity = capacity - sum(quantity)` over reservations with status
+        `RESERVED` or `CONFIRMED`. Released reservations do not consume capacity.
+      operationId: getDepartureAvailability
+      responses:
+        '200':
+          description: Availability retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailabilityResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==========================================
+  # CATALOGUE SERVICE - INVENTORY RESERVATIONS
+  # ==========================================
+  /departures/{departureId}/reservations:
+    parameters:
+      - $ref: '#/components/parameters/DepartureId'
+    get:
+      tags:
+        - Catalogue Service - Reservations
+      summary: List reservations on a departure (Feature C5)
+      operationId: listReservationsForDeparture
+      responses:
+        '200':
+          description: Reservations on the departure
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InventoryReservation'
+    post:
+      tags:
+        - Catalogue Service - Reservations
+      summary: Reserve places on a departure (Feature C5)
+      description: |
+        Manual/administrative equivalent of the reservation performed when a
+        `booking-created` event is consumed. Rejected when the departure is not
+        `AVAILABLE`, when the quantity exceeds available capacity, or when a
+        reservation already exists for the same `bookingId`.
+      operationId: createReservation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryReservationRequest'
+      responses:
+        '201':
+          description: Reservation created with status RESERVED
+          headers:
+            Location:
+              description: URI of the created reservation
+              schema:
+                type: string
+                example: /api/reservations/6f1c2d0e-2b1a-4c3d-9e8f-0a1b2c3d4e5f
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryReservation'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          description: Departure not found
+        '409':
+          description: Departure unavailable, insufficient capacity, or duplicate booking
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              examples:
+                unavailable:
+                  value: { message: "This departure is not available" }
+                capacity:
+                  value: { message: "There are not enough available spaces" }
+                duplicate:
+                  value: { message: "A reservation already exists for this booking" }
+
+  /reservations/{reservationId}:
+    parameters:
+      - $ref: '#/components/parameters/ReservationId'
+    get:
+      tags:
+        - Catalogue Service - Reservations
+      summary: Get a reservation by ID (Feature C5)
+      operationId: getReservationById
+      responses:
+        '200':
+          description: Reservation retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryReservation'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /reservations/{reservationId}/confirm:
+    parameters:
+      - $ref: '#/components/parameters/ReservationId'
+    put:
+      tags:
+        - Catalogue Service - Reservations
+      summary: Confirm a reservation (Feature C5)
+      operationId: confirmReservation
+      responses:
+        '200':
+          description: Reservation status set to CONFIRMED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryReservation'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /reservations/{reservationId}/release:
+    parameters:
+      - $ref: '#/components/parameters/ReservationId'
+    put:
+      tags:
+        - Catalogue Service - Reservations
+      summary: Release a reservation and restore capacity (Feature C5)
+      operationId: releaseReservation
+      responses:
+        '200':
+          description: Reservation status set to RELEASED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryReservation'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==========================================
+  # BOOKING SERVICE
+  # ==========================================
+  /bookings:
+    get:
+      tags:
+        - Booking Service
+      summary: List all bookings (Feature B2)
+      operationId: listBookings
+      responses:
+        '200':
+          description: A list of all bookings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Booking'
+    post:
+      tags:
+        - Booking Service
+      summary: Create a booking (Feature B1)
+      description: |
+        Saves the booking with status `PENDING_INVENTORY` and publishes a
+        `BookingCreatedEvent` to the `booking-created` Kafka topic. The booking then
+        advances asynchronously (see `x-kafka-events`); poll `GET /bookings/{bookingId}`
+        to observe `reservationId`, `paymentId` and `status` being updated.
+      operationId: createBooking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingCreateRequest'
+      responses:
+        '201':
+          description: Booking created with status PENDING_INVENTORY
+          headers:
+            Location:
+              description: URI of the created booking
+              schema:
+                type: string
+                example: /api/bookings/c3d2952d-da15-4c49-808d-4bcbe0beb8fd
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /bookings/{bookingId}:
+    parameters:
+      - $ref: '#/components/parameters/BookingId'
+    get:
+      tags:
+        - Booking Service
+      summary: Get a booking by ID (Feature B2)
+      operationId: getBookingById
+      responses:
+        '200':
+          description: Booking retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Booking Service
+      summary: Delete a booking (Feature B3)
+      operationId: deleteBooking
+      responses:
+        '204':
+          description: Booking deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==========================================
+  # PAYMENT SERVICE
+  # ==========================================
+  /payments:
+    get:
+      tags:
+        - Payment Service
+      summary: List all payments (Feature P2)
+      operationId: listPayments
+      responses:
+        '200':
+          description: A list of all payments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Payment'
+
+  /payments/{paymentId}:
+    get:
+      tags:
+        - Payment Service
+      summary: Get a payment by ID (Feature P2)
+      operationId: getPaymentById
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Payment retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /payments/booking/{bookingId}:
+    parameters:
+      - $ref: '#/components/parameters/BookingId'
+    get:
+      tags:
+        - Payment Service
+      summary: Get the payment for a booking (Feature P2)
+      operationId: getPaymentByBookingId
+      responses:
+        '200':
+          description: Payment retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==========================================
+  # NOTIFICATION SERVICE
+  # ==========================================
+  /notifications:
+    get:
+      tags:
+        - Notification Service
+      summary: List all notifications (Feature N2)
+      operationId: listNotifications
+      responses:
+        '200':
+          description: A list of all notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Notification'
+
+  /notifications/{notificationId}:
+    get:
+      tags:
+        - Notification Service
+      summary: Get a notification by ID (Feature N2)
+      operationId: getNotificationById
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Notification retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /notifications/customer/{customerId}:
+    get:
+      tags:
+        - Notification Service
+      summary: List notifications for a customer (Feature N2)
+      operationId: listNotificationsByCustomer
+      parameters:
+        - name: customerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Notifications for the customer (empty list if none)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Notification'
+
+  /notifications/booking/{bookingId}:
+    parameters:
+      - $ref: '#/components/parameters/BookingId'
+    get:
+      tags:
+        - Notification Service
+      summary: List notifications for a booking (Feature N2)
+      operationId: listNotificationsByBooking
+      responses:
+        '200':
+          description: Notifications for the booking (empty list if none)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Notification'
+
+# ==========================================
+# COMPONENTS & SCHEMAS
+# ==========================================
+components:
+  parameters:
+    PackageId:
+      name: packageId
+      in: path
+      required: true
+      description: Unique ID of the travel package
+      schema:
+        type: integer
+        format: int64
+      example: 1
+    DepartureId:
+      name: departureId
+      in: path
+      required: true
+      description: Unique ID of the package departure
+      schema:
+        type: integer
+        format: int64
+      example: 1
+    ReservationId:
+      name: reservationId
+      in: path
+      required: true
+      description: Unique ID of the inventory reservation
+      schema:
+        type: string
+        format: uuid
+    BookingId:
+      name: bookingId
+      in: path
+      required: true
+      description: Unique ID of the booking
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    ValidationError:
+      description: Invalid request body - map of field name to validation message
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorResponse'
+    NotFound:
+      description: Requested resource was not found (empty body)
+    InternalError:
+      description: Unexpected server-side error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/MessageResponse'
+          example:
+            message: An unexpected error occurred
+
+  schemas:
+    # ---------- Catalogue Service ----------
+    TravelPackageRequest:
+      type: object
+      required:
+        - name
+        - destination
+        - description
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          example: Tokyo Adventure
+        destination:
+          type: string
+          maxLength: 100
+          example: Tokyo, Japan
+        description:
+          type: string
+          maxLength: 500
+          example: Seven-day holiday package exploring Tokyo.
+
+    TravelPackage:
+      allOf:
+        - type: object
+          properties:
+            packageId:
+              type: integer
+              format: int64
+              example: 1
+        - $ref: '#/components/schemas/TravelPackageRequest'
+
+    PackageDepartureRequest:
+      type: object
+      required:
+        - startDate
+        - endDate
+        - price
+        - capacity
+      properties:
+        startDate:
+          type: string
+          format: date
+          example: "2026-12-01"
+        endDate:
+          type: string
+          format: date
+          example: "2026-12-08"
+        price:
+          type: number
+          format: double
+          minimum: 0.01
+          example: 2199.99
+        capacity:
+          type: integer
+          minimum: 1
+          example: 20
+        status:
+          $ref: '#/components/schemas/DepartureStatus'
+
+    PackageDeparture:
+      allOf:
+        - type: object
+          properties:
+            departureId:
+              type: integer
+              format: int64
+              example: 1
+        - $ref: '#/components/schemas/PackageDepartureRequest'
+
+    DepartureStatus:
+      type: string
+      enum: [AVAILABLE, SOLD_OUT, CANCELLED]
+      default: AVAILABLE
+
+    AvailabilityResponse:
+      type: object
+      properties:
+        availableCapacity:
+          type: integer
+          example: 18
+
+    InventoryReservationRequest:
+      type: object
+      required:
+        - bookingId
+        - quantity
+      properties:
+        bookingId:
+          type: string
+          format: uuid
+          example: c3d2952d-da15-4c49-808d-4bcbe0beb8fd
+        quantity:
+          type: integer
+          minimum: 1
+          example: 2
+
+    InventoryReservation:
+      type: object
+      properties:
+        reservationId:
+          type: string
+          format: uuid
+        bookingId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          example: 2
+        status:
+          $ref: '#/components/schemas/ReservationStatus'
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-08-29T10:00:00"
+
+    ReservationStatus:
+      type: string
+      enum: [RESERVED, CONFIRMED, RELEASED]
+      default: RESERVED
+
+    # ---------- Booking Service ----------
+    BookingCreateRequest:
+      type: object
+      required:
+        - customerId
+        - packageId
+        - departureId
+        - quantity
+      properties:
+        customerId:
+          type: string
+          format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
+        packageId:
+          type: integer
+          format: int64
+          example: 1
+        departureId:
+          type: integer
+          format: int64
+          example: 1
+        quantity:
+          type: integer
+          minimum: 1
+          example: 2
+        totalPrice:
+          type: number
+          format: double
+          description: Total amount to be charged; forwarded as the payment amount. Values <= 0 cause the prototype payment to fail.
+          example: 4399.98
+
+    Booking:
+      type: object
+      properties:
+        bookingId:
+          type: string
+          format: uuid
+          example: c3d2952d-da15-4c49-808d-4bcbe0beb8fd
+        customerId:
+          type: string
+          format: uuid
+        packageId:
+          type: integer
+          format: int64
+          example: 1
+        departureId:
+          type: integer
+          format: int64
+          example: 1
+        reservationId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Set when InventoryReserved is received
+        paymentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Set when PaymentCompleted / PaymentFailed is received
+        quantity:
+          type: integer
+          example: 2
+        totalPrice:
+          type: number
+          format: double
+          example: 4399.98
+        status:
+          $ref: '#/components/schemas/BookingStatus'
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-08-29T10:00:00"
+
+    BookingStatus:
+      type: string
+      enum: [PENDING_INVENTORY, PENDING_PAYMENT, CONFIRMED, FAILED]
+      default: PENDING_INVENTORY
+
+    # ---------- Payment Service ----------
+    Payment:
+      type: object
+      properties:
+        paymentId:
+          type: string
+          format: uuid
+        bookingId:
+          type: string
+          format: uuid
+        customerId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+          format: double
+          example: 4399.98
+        status:
+          $ref: '#/components/schemas/PaymentStatus'
+        processedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    PaymentStatus:
+      type: string
+      enum: [PENDING, COMPLETED, FAILED]
+      default: PENDING
+
+    # ---------- Notification Service ----------
+    Notification:
+      type: object
+      properties:
+        notificationId:
+          type: string
+          format: uuid
+        bookingId:
+          type: string
+          format: uuid
+        customerId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [BOOKING_CONFIRMED, BOOKING_FAILED]
+        message:
+          type: string
+          example: Your booking has been confirmed.
+        status:
+          type: string
+          enum: [CREATED, SENT]
+        createdAt:
+          type: string
+          format: date-time
+
+    # ---------- Errors ----------
+    ValidationErrorResponse:
+      type: object
+      description: Field name mapped to its validation message
+      additionalProperties:
+        type: string
+      example:
+        name: Package name is required
+        capacity: Capacity must be at least 1
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+
+    # ---------- Kafka event payloads ----------
+    BookingCreatedEvent:
+      type: object
+      properties:
+        bookingId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        packageId: { type: integer, format: int64 }
+        departureId: { type: integer, format: int64 }
+        quantity: { type: integer }
+        totalPrice: { type: number, format: double }
+
+    InventoryReservedEvent:
+      type: object
+      properties:
+        bookingId: { type: string, format: uuid }
+        reservationId: { type: string, format: uuid }
+        departureId: { type: integer, format: int64 }
+        quantity: { type: integer }
+
+    InventoryRejectedEvent:
+      type: object
+      properties:
+        bookingId: { type: string, format: uuid }
+        departureId: { type: integer, format: int64 }
+        reason:
+          type: string
+          enum: [DEPARTURE_NOT_FOUND, DEPARTURE_UNAVAILABLE, INSUFFICIENT_CAPACITY, DUPLICATE_BOOKING]
+
+    PaymentRequestedEvent:
+      type: object
+      properties:
+        bookingId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        amount: { type: number, format: double }
+
+    PaymentCompletedEvent:
+      type: object
+      properties:
+        bookingId: { type: string, format: uuid }
+        paymentId: { type: string, format: uuid }
+
+    PaymentFailedEvent:
+      type: object
+      properties:
+        bookingId: { type: string, format: uuid }
+        paymentId: { type: string, format: uuid }
+        reason: { type: string, example: Payment amount must be greater than zero }
+
+    BookingConfirmedEvent:
+      type: object
+      properties:
+        bookingId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        reservationId: { type: string, format: uuid }
+
+    BookingFailedEvent:
+      type: object
+      properties:
+        bookingId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        reservationId: { type: string, format: uuid, nullable: true }
+        reason: { type: string }
+
+# ==========================================
+# ASYNCHRONOUS (KAFKA) CONTRACTS
+# ==========================================
+x-kafka-events:
+  broker: localhost:9092
+  contentType: application/json
+  topics:
+    - topic: booking-created
+      producer: booking-service
+      consumers: [catalogue-service]
+      payload: '#/components/schemas/BookingCreatedEvent'
+    - topic: inventory-reserved
+      producer: catalogue-service
+      consumers: [booking-service]
+      payload: '#/components/schemas/InventoryReservedEvent'
+    - topic: inventory-rejected
+      producer: catalogue-service
+      consumers: [booking-service]
+      payload: '#/components/schemas/InventoryRejectedEvent'
+    - topic: payment-requested
+      producer: booking-service
+      consumers: [payment-service]
+      payload: '#/components/schemas/PaymentRequestedEvent'
+    - topic: payment-completed
+      producer: payment-service
+      consumers: [booking-service]
+      payload: '#/components/schemas/PaymentCompletedEvent'
+    - topic: payment-failed
+      producer: payment-service
+      consumers: [booking-service]
+      payload: '#/components/schemas/PaymentFailedEvent'
+    - topic: booking-confirmed
+      producer: booking-service
+      consumers: [catalogue-service, notification-service]
+      payload: '#/components/schemas/BookingConfirmedEvent'
+    - topic: booking-failed
+      producer: booking-service
+      consumers: [catalogue-service, notification-service]
+      payload: '#/components/schemas/BookingFailedEvent'
