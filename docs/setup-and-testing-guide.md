@@ -376,14 +376,72 @@ Do not close this terminal while testing.
 
 ---
 
-# 9. Running the Complete System
+# 9. Running the Payment Service
 
-For integration testing, the following three components should be running simultaneously:
+Open another terminal.
+
+From the project root:
+
+```powershell
+cd payment-service
+```
+
+Start the service:
+
+```powershell
+.\mvnw.cmd spring-boot:run
+```
+
+The service should start on:
 
 ```text
-Kafka               localhost:9092
-Catalogue Service   localhost:8081
-Booking Service     localhost:8082
+http://localhost:8083
+```
+
+The Payment Service has no create endpoint. It consumes `payment-requested` events and publishes `payment-completed` (when `amount > 0`) or `payment-failed` (when `amount <= 0`). Payments can be inspected at `GET http://localhost:8083/api/payments`.
+
+Do not close this terminal while testing.
+
+---
+
+# 10. Running the Notification Service
+
+Open another terminal.
+
+From the project root:
+
+```powershell
+cd notification-service
+```
+
+Start the service:
+
+```powershell
+.\mvnw.cmd spring-boot:run
+```
+
+The service should start on:
+
+```text
+http://localhost:8084
+```
+
+The Notification Service consumes `booking-confirmed` and `booking-failed` events and stores a notification for the customer. Notifications can be inspected at `GET http://localhost:8084/api/notifications`.
+
+Do not close this terminal while testing.
+
+---
+
+# 11. Running the Complete System
+
+For end-to-end testing, the following five components should be running simultaneously:
+
+```text
+Kafka                  localhost:9092
+Catalogue Service      localhost:8081
+Booking Service        localhost:8082
+Payment Service        localhost:8083
+Notification Service   localhost:8084
 ```
 
 A typical setup therefore uses:
@@ -398,11 +456,21 @@ Terminal 1
 
 Terminal 2
 └── Booking Service :8082
+
+Terminal 3
+└── Payment Service :8083
+
+Terminal 4
+└── Notification Service :8084
 ```
+
+Start order matters only for Kafka: it must be up before any service starts. The four services can be started in any order; each one reconnects to its Kafka topics independently.
+
+If you only want to exercise the Catalogue and Booking services, the Payment Service can be left off and payment events published manually — see the "Testing Without the Payment Service" section.
 
 ---
 
-# 10. Catalogue API
+# 12. Catalogue API
 
 Base URL:
 
@@ -516,7 +584,7 @@ DELETE http://localhost:8081/api/packages/1
 
 ---
 
-# 11. Departure API
+# 13. Departure API
 
 ## Create Departure
 
@@ -566,7 +634,7 @@ For a departure with capacity 20 and no reservations, the available capacity sho
 
 ---
 
-# 12. Booking API
+# 14. Booking API
 
 Base URL:
 
@@ -651,7 +719,7 @@ DELETE http://localhost:8082/api/bookings/c3d2952d-da15-4c49-808d-4bcbe0beb8fd
 
 ---
 
-# 13. Booking Lifecycle
+# 15. Booking Lifecycle
 
 The Booking Service uses states to control the booking lifecycle.
 
@@ -691,7 +759,7 @@ Booking state is controlled by events rather than a public endpoint that manuall
 
 ---
 
-# 14. Kafka Event Flow
+# 16. Kafka Event Flow
 
 ## Successful Booking
 
@@ -752,7 +820,7 @@ Reservation CONFIRMED
 
 ---
 
-# 15. Failed Payment Flow
+# 17. Failed Payment Flow
 
 If payment fails:
 
@@ -788,7 +856,7 @@ This prevents failed bookings from permanently consuming travel inventory.
 
 ---
 
-# 16. Inventory Capacity Logic
+# 18. Inventory Capacity Logic
 
 Catalogue calculates available capacity using active reservations.
 
@@ -821,7 +889,7 @@ This behaviour has been tested successfully using the running Kafka integration.
 
 ---
 
-# 17. Kafka Topics
+# 19. Kafka Topics
 
 The current workflow uses the following Kafka topics:
 
@@ -844,7 +912,7 @@ localhost:9092
 
 ---
 
-# 18. Testing Without the Payment Service
+# 20. Testing Without the Payment Service
 
 The Payment Service can be simulated manually using Kafka while it is still being developed or integrated.
 
@@ -896,7 +964,7 @@ The booking should now contain:
 
 ---
 
-# 19. Simulating Payment Failure
+# 21. Simulating Payment Failure
 
 Create another booking and wait for it to reach:
 
@@ -928,7 +996,7 @@ The Catalogue Service should receive `BookingFailed` and release the associated 
 
 ---
 
-# 20. Complete Manual Integration Test
+# 22. Complete Manual Integration Test
 
 The following workflow can be used to demonstrate the two services.
 
@@ -1080,7 +1148,7 @@ The Catalogue reservation should also become confirmed.
 
 ---
 
-# 21. Automated Tests
+# 23. Automated Tests
 
 The project includes automated tests for both services.
 
@@ -1146,7 +1214,7 @@ BUILD SUCCESS
 
 ---
 
-# 22. Error Handling and Validation
+# 24. Error Handling and Validation
 
 Both services include global exception handling.
 
@@ -1172,7 +1240,7 @@ Validation is applied to incoming request bodies using Jakarta Validation and Sp
 
 ---
 
-# 23. Database Design
+# 25. Database Design
 
 Each microservice owns its own persistence layer.
 
@@ -1194,7 +1262,7 @@ H2 is currently used for development and testing.
 
 ---
 
-# 24. Event-Driven Design
+# 26. Event-Driven Design
 
 The system uses asynchronous Kafka events instead of synchronous REST calls for the booking lifecycle.
 
@@ -1211,7 +1279,7 @@ The Booking Service acts as the coordinator of the overall booking lifecycle.
 
 ---
 
-# 25. Reservation Protection
+# 27. Reservation Protection
 
 Catalogue prevents the same booking from creating multiple inventory reservations.
 
@@ -1249,7 +1317,7 @@ This prevents repeated or out-of-order events from incorrectly advancing the boo
 
 ---
 
-# 26. Current Integration Status
+# 28. Current Integration Status
 
 The following integration has been implemented and manually verified:
 
@@ -1301,7 +1369,7 @@ Payment events were manually produced through Kafka during testing while the ext
 
 ---
 
-# 27. Future Service Integration
+# 29. Future Service Integration
 
 The architecture allows additional microservices to be connected without changing the core Catalogue and Booking responsibilities.
 
@@ -1337,7 +1405,7 @@ without requiring direct database access to Booking or Catalogue.
 
 ---
 
-# 28. Useful Commands
+# 30. Useful Commands
 
 ## Check Docker
 
@@ -1377,6 +1445,20 @@ cd booking-service
 .\mvnw.cmd spring-boot:run
 ```
 
+## Start Payment
+
+```powershell
+cd payment-service
+.\mvnw.cmd spring-boot:run
+```
+
+## Start Notification
+
+```powershell
+cd notification-service
+.\mvnw.cmd spring-boot:run
+```
+
 ## Test Catalogue
 
 ```powershell
@@ -1388,6 +1470,20 @@ cd catalogue-service
 
 ```powershell
 cd booking-service
+.\mvnw.cmd clean test
+```
+
+## Test Payment
+
+```powershell
+cd payment-service
+.\mvnw.cmd clean test
+```
+
+## Test Notification
+
+```powershell
+cd notification-service
 .\mvnw.cmd clean test
 ```
 
@@ -1405,9 +1501,23 @@ cd booking-service
 .\mvnw.cmd clean package
 ```
 
+## Build Payment
+
+```powershell
+cd payment-service
+.\mvnw.cmd clean package
+```
+
+## Build Notification
+
+```powershell
+cd notification-service
+.\mvnw.cmd clean package
+```
+
 ---
 
-# 29. Troubleshooting
+# 31. Troubleshooting
 
 ## Docker command works but Kafka will not start
 
@@ -1452,6 +1562,8 @@ The services require:
 ```text
 8081 - Catalogue
 8082 - Booking
+8083 - Payment
+8084 - Notification
 9092 - Kafka
 ```
 
@@ -1489,7 +1601,7 @@ payment-failed
 
 ---
 
-# 30. Summary
+# 32. Summary
 
 The current implementation provides a working event-driven foundation for the AI-assisted travel booking system.
 
