@@ -1,3 +1,5 @@
+> Detailed setup, manual integration-testing and troubleshooting guide. For the project overview, specifications and quick-start see the root [README.md](../README.md) and the [specs/](../specs/) folder.
+
 # AI-Assisted Travel Booking System
 
 A microservices-based travel booking application developed using Spring Boot.
@@ -85,9 +87,9 @@ Each microservice owns its own database and communicates with other services thr
 # 3. Project Structure
 
 ```text
-ai-travel-booking/
+318group-assessment/
 │
-├── catalogue-service/
+├── catalogue-service/                 # :8081 — packages, departures, inventory
 │   ├── src/
 │   │   ├── main/
 │   │   │   ├── java/com/travelbooking/catalogue/
@@ -102,12 +104,11 @@ ai-travel-booking/
 │   │   │       └── application.properties
 │   │   └── test/
 │   │       └── java/com/travelbooking/catalogue/
-│   │
 │   ├── pom.xml
 │   ├── mvnw
 │   └── mvnw.cmd
 │
-├── booking-service/
+├── booking-service/                   # :8082 — booking lifecycle coordinator
 │   ├── src/
 │   │   ├── main/
 │   │   │   ├── java/com/travelbooking/booking/
@@ -122,12 +123,58 @@ ai-travel-booking/
 │   │   │       └── application.properties
 │   │   └── test/
 │   │       └── java/com/travelbooking/booking/
-│   │
 │   ├── pom.xml
 │   ├── mvnw
 │   └── mvnw.cmd
 │
-└── README.md
+├── payment-service/                   # :8083 — simulated payment gateway
+│   ├── src/
+│   │   ├── main/
+│   │   │   ├── java/com/travelbooking/payment/
+│   │   │   │   ├── controller/
+│   │   │   │   ├── event/
+│   │   │   │   ├── messaging/
+│   │   │   │   ├── model/
+│   │   │   │   ├── repository/
+│   │   │   │   └── service/
+│   │   │   └── resources/
+│   │   │       └── application.properties
+│   │   └── test/
+│   │       └── java/com/travelbooking/payment/
+│   ├── pom.xml
+│   ├── mvnw
+│   └── mvnw.cmd
+│
+├── notification-service/              # :8084 — booking-outcome notifications
+│   ├── src/
+│   │   ├── main/
+│   │   │   ├── java/com/travelbooking/notification/
+│   │   │   │   ├── controller/
+│   │   │   │   ├── event/
+│   │   │   │   ├── messaging/
+│   │   │   │   ├── model/
+│   │   │   │   ├── repository/
+│   │   │   │   └── service/
+│   │   │   └── resources/
+│   │   │       └── application.properties
+│   │   └── test/
+│   │       └── java/com/travelbooking/notification/
+│   ├── pom.xml
+│   ├── mvnw
+│   └── mvnw.cmd
+│
+├── specs/                             # specification-first artifacts
+│   ├── 1-technical-architecture.md
+│   ├── 2-user-stories.md
+│   ├── 3-domain-models.md
+│   ├── 4-api-endpoints.md
+│   └── openapi-contract.yaml
+│
+├── docs/
+│   └── setup-and-testing-guide.md     # this file
+│
+├── agent_prompt.md                    # instructions for the development agent
+└── README.md                          # project overview and quick start
 ```
 
 ---
