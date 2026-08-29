@@ -78,6 +78,7 @@ The current implementation uses:
 - Mockito
 - MockMvc
 - Docker
+- springdoc-openapi (Swagger UI) for interactive API documentation and manual testing
 - Thunder Client for manual API testing
 
 Each microservice owns its own database and communicates with other services through events rather than directly sharing database tables.
@@ -346,6 +347,14 @@ The service should start on:
 http://localhost:8081
 ```
 
+Interactive API documentation (Swagger UI) is available at:
+
+```text
+http://localhost:8081/swagger-ui.html
+```
+
+Expand an endpoint, click **Try it out**, edit the request body and click **Execute** to call the API directly from the browser. The generated OpenAPI document is at `http://localhost:8081/v3/api-docs`.
+
 Do not close this terminal while testing the system.
 
 ---
@@ -372,6 +381,14 @@ The service should start on:
 http://localhost:8082
 ```
 
+Interactive API documentation (Swagger UI) is available at:
+
+```text
+http://localhost:8082/swagger-ui.html
+```
+
+Expand an endpoint, click **Try it out**, edit the request body and click **Execute** to call the API directly from the browser. The generated OpenAPI document is at `http://localhost:8082/v3/api-docs`.
+
 Do not close this terminal while testing.
 
 ---
@@ -397,6 +414,14 @@ The service should start on:
 ```text
 http://localhost:8083
 ```
+
+Interactive API documentation (Swagger UI) is available at:
+
+```text
+http://localhost:8083/swagger-ui.html
+```
+
+Expand an endpoint, click **Try it out**, edit the request body and click **Execute** to call the API directly from the browser. The generated OpenAPI document is at `http://localhost:8083/v3/api-docs`.
 
 The Payment Service has no create endpoint. It consumes `payment-requested` events and publishes `payment-completed` (when `amount > 0`) or `payment-failed` (when `amount <= 0`). Payments can be inspected at `GET http://localhost:8083/api/payments`.
 
@@ -426,6 +451,14 @@ The service should start on:
 http://localhost:8084
 ```
 
+Interactive API documentation (Swagger UI) is available at:
+
+```text
+http://localhost:8084/swagger-ui.html
+```
+
+Expand an endpoint, click **Try it out**, edit the request body and click **Execute** to call the API directly from the browser. The generated OpenAPI document is at `http://localhost:8084/v3/api-docs`.
+
 The Notification Service consumes `booking-confirmed` and `booking-failed` events and stores a notification for the customer. Notifications can be inspected at `GET http://localhost:8084/api/notifications`.
 
 Do not close this terminal while testing.
@@ -442,6 +475,15 @@ Catalogue Service      localhost:8081
 Booking Service        localhost:8082
 Payment Service        localhost:8083
 Notification Service   localhost:8084
+```
+
+Each running service exposes its own Swagger UI:
+
+```text
+Catalogue      http://localhost:8081/swagger-ui.html
+Booking        http://localhost:8082/swagger-ui.html
+Payment        http://localhost:8083/swagger-ui.html
+Notification   http://localhost:8084/swagger-ui.html
 ```
 
 A typical setup therefore uses:
