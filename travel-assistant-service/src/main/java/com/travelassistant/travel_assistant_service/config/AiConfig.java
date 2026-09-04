@@ -1,0 +1,21 @@
+package com.travelassistant.travel_assistant_service.config;
+
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class AiConfig {
+
+    @Bean
+    public ChatModel chatModel(
+            @Value("${gemini.api.key}") String apiKey) {
+
+        return GoogleAiGeminiChatModel.builder()
+                .apiKey(apiKey)
+                .modelName("gemini-3.6-flash")
+                .build();
+    }
+}
