@@ -27,6 +27,7 @@ application-local.properties
 application-secret.properties
 
 # React frontend
+.vite/
 node_modules/
 dist/
 test-results/
