@@ -25,3 +25,9 @@ HELP.md
 # API keys / secret files
 application-local.properties
 application-secret.properties
+
+# React frontend
+node_modules/
+dist/
+test-results/
+playwright-report/
