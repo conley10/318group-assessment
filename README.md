@@ -1,5 +1,19 @@
 # AI-Assisted Travel Booking System (AI-Driven Development Case Study)
 
+## Voyage React Homepage
+
+The `frontend/` directory contains the Voyage homepage, including catalogue search, package details and an AI assistant dialog.
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Open **http://localhost:5173**. Start Catalogue (`8081`) and Travel Assistant (`8085`) for live integration. When the catalogue is unavailable or empty, clearly labelled sample trips are displayed.
+
+See [frontend setup and integration notes](frontend/README.md) for supported filters, backend limitations and production configuration.
+
 A microservices-based travel booking application built with **Spring Boot**, **Apache Kafka**, **Kafka Streams**, and **LangChain4j**.
 
 Six independent services — Catalogue, Booking, Payment, Notification, Travel Assistant and Stream Analytics — work together to provide an event-driven travel booking platform with AI-assisted recommendations and real-time booking analytics.
