@@ -2,6 +2,10 @@ export const photos = {
   hero: '/images/hero.jpg',
   bali: '/images/bali.jpg',
   tokyo: '/images/tokyo.jpg',
+  italy: '/images/italy.jpg',
+  greece: '/images/greece.jpg',
+  newzealand: '/images/newzealand.jpg',
+  fiji: '/images/fiji.jpg',
   alps: '/images/alps.jpg',
 };
 
@@ -13,15 +17,50 @@ export const samplePackages = [
 
 export function packageImage(item) {
   if (item.image) return item.image;
-  if (/japan|tokyo/i.test(item.destination)) return photos.tokyo;
-  if (/swiss|alps|mountain/i.test(item.destination)) return photos.alps;
+
+  const destination = item.destination || '';
+
+  if (/japan|tokyo/i.test(destination)) {
+    return photos.tokyo;
+  }
+
+  if (/italy|rome|florence|venice/i.test(destination)) {
+    return photos.italy;
+  }
+
+  if (/greece|athens|mykonos|santorini/i.test(destination)) {
+    return photos.greece;
+  }
+
+  if (/indonesia|bali/i.test(destination)) {
+    return photos.bali;
+  }
+
+  if (/new zealand|queenstown/i.test(destination)) {
+    return photos.newzealand;
+  }
+
+  if (/fiji/i.test(destination)) {
+    return photos.fiji;
+  }
+
+  if (/swiss|alps|mountain/i.test(destination)) {
+    return photos.alps;
+  }
+
   return photos.bali;
 }
 
 export function matchingDepartures(item, filters) {
   const today = new Date().toLocaleDateString('en-CA');
-  return item.departures.filter(d => d.status === 'AVAILABLE' && d.startDate >= today
-    && (!filters.date || d.startDate === filters.date)
-    && (!filters.budget || d.price <= Number(filters.budget))
-    && (!filters.travellers || (d.availableCapacity != null && d.availableCapacity >= Number(filters.travellers))));
+
+  return item.departures.filter(
+    d =>
+      d.status === 'AVAILABLE' &&
+      d.startDate >= today &&
+      (!filters.date ||
+        d.startDate === filters.date) &&
+      (!filters.budget ||
+        d.price <= Number(filters.budget))
+  );
 }

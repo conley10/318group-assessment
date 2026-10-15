@@ -105,25 +105,47 @@ public class BookingService {
                 });
     }
 
-    @Transactional
-    public Optional<Booking> handleInventoryRejected(
-            InventoryRejectedEvent event
-    ) {
-        return repository.findById(event.bookingId())
-                .map(booking -> {
+@Transactional
+public Optional<Booking> handleInventoryRejected(
+        InventoryRejectedEvent event
+) {
+    return repository.findById(event.bookingId())
+            .map(booking -> {
 
-                    if (booking.getStatus()
-                            != BookingStatus.PENDING_INVENTORY) {
-                        return booking;
-                    }
+                if (booking.getStatus()
+                        != BookingStatus.PENDING_INVENTORY) {
+                    return booking;
+                }
 
-                    booking.setStatus(
-                            BookingStatus.FAILED
-                    );
+                booking.setStatus(
+                        BookingStatus.FAILED
+                );
 
-                    return repository.save(booking);
-                });
-    }
+                Booking saved = repository.save(booking);
+
+                BookingFailedEvent failedEvent =
+                        new BookingFailedEvent(
+                                saved.getBookingId(),
+                                saved.getCustomerId(),
+                                saved.getReservationId(),
+                                event.reason()
+                        );
+
+                streamBridge.send(
+                        "bookingFailed-out-0",
+                        failedEvent
+                );
+
+                System.out.println(
+                        "Booking failed due to inventory rejection: "
+                                + saved.getBookingId()
+                                + " reason: "
+                                + event.reason()
+                );
+
+                return saved;
+            });
+}
 
     @Transactional
 public Optional<Booking> handlePaymentCompleted(

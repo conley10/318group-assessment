@@ -1,5 +1,8 @@
+
 package com.travelbooking.stream_analytics_service.analytics;
 
+
+import org.springframework.beans.factory.ObjectProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -11,7 +14,7 @@ class AnalyticsServiceTest {
 
     @BeforeEach
     void setUp() {
-        analyticsService = new AnalyticsService();
+        analyticsService = new AnalyticsService(null);
     }
 
     @Test
@@ -23,17 +26,16 @@ class AnalyticsServiceTest {
     }
 
     @Test
-    void shouldCountCreatedBookings() {
-        analyticsService.bookingCreated();
-        analyticsService.bookingCreated();
+    void shouldSetTotalBookings() {
+        analyticsService.setTotalBookings(2);
 
         assertEquals(2, analyticsService.getTotalBookings());
     }
 
     @Test
-    void shouldCountConfirmedBookings() {
-        analyticsService.bookingCreated();
-        analyticsService.bookingConfirmed();
+    void shouldSetConfirmedBookings() {
+        analyticsService.setTotalBookings(1);
+        analyticsService.setConfirmedBookings(1);
 
         assertEquals(1, analyticsService.getTotalBookings());
         assertEquals(1, analyticsService.getConfirmedBookings());
@@ -41,9 +43,9 @@ class AnalyticsServiceTest {
     }
 
     @Test
-    void shouldCountFailedBookings() {
-        analyticsService.bookingCreated();
-        analyticsService.bookingFailed();
+    void shouldSetFailedBookings() {
+        analyticsService.setTotalBookings(1);
+        analyticsService.setFailedBookings(1);
 
         assertEquals(1, analyticsService.getTotalBookings());
         assertEquals(1, analyticsService.getFailedBookings());
@@ -52,15 +54,21 @@ class AnalyticsServiceTest {
 
     @Test
     void shouldCalculateSuccessRate() {
-        analyticsService.bookingCreated();
-        analyticsService.bookingCreated();
-
-        analyticsService.bookingConfirmed();
-        analyticsService.bookingFailed();
+        analyticsService.setTotalBookings(2);
+        analyticsService.setConfirmedBookings(1);
+        analyticsService.setFailedBookings(1);
 
         assertEquals(2, analyticsService.getTotalBookings());
         assertEquals(1, analyticsService.getConfirmedBookings());
         assertEquals(1, analyticsService.getFailedBookings());
         assertEquals(50.0, analyticsService.getSuccessRate());
+    }
+
+    @Test
+    void shouldReplaceExistingCounts() {
+        analyticsService.setTotalBookings(5);
+        analyticsService.setTotalBookings(3);
+
+        assertEquals(3, analyticsService.getTotalBookings());
     }
 }
