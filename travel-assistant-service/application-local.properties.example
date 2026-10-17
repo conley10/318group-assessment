@@ -1,0 +1,2 @@
+# Copy to application-local.properties and add your Gemini API key.
+gemini.api.key=your-gemini-api-key-here

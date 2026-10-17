@@ -32,3 +32,8 @@ node_modules/
 dist/
 test-results/
 playwright-report/
+
+# Local H2 database files
+*.mv.db
+*.lock.db
+*.trace.db
